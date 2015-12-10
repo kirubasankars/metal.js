@@ -6,6 +6,52 @@
         this._array = false;
 
         this._observers = {};
+
+        if (arguments) {
+            parseJSON.call(this, arguments[0]);
+        }
+    }
+
+    metal.prototype.set = function (property, value) {
+        if (typeof property === "string") {
+            property_set.call(this, property, value);
+        }
+    }
+
+    metal.prototype.get = function (property) {
+        if (typeof property === "string") {
+            return property_get.call(this, property);
+        }
+    }
+
+    metal.prototype._property_changed = function () {
+        this.trigger.apply(this, arguments);
+    }
+
+    metal.prototype.contains = function (key) {
+        return this._attributes[key] !== undefined;
+    }
+
+    metal.prototype.toJSON = function () {
+        var output = {},
+          prop, value;
+
+        for (prop in this._attributes) {
+            value = this._attributes[prop];
+            if (value instanceof metal) {
+                if (value._array === true) {
+                    value = value.toJSON();
+                } else {
+                    value = value._attributes;
+                }
+            }
+            if (this._array) {
+                prop = prop.substr(1, prop.length);
+            }
+            output[prop] = value;
+        }
+
+        return output;
     }
 
     metal.prototype.trigger = function () {
@@ -42,44 +88,6 @@
         }
     }
 
-    metal.prototype._property_changed = function (key, newValue, oldValue) {
-        this.trigger.apply(this, arguments);
-    }
-
-    metal.prototype.set = function (key, value) {
-        property_set.call(this, key, value);        
-    }
-
-    metal.prototype.contains = function (key) {
-        return this._attributes[key] !== undefined;
-    }
-
-    metal.prototype.get = function (key) {
-        return property_get.call(this, key);
-    }
-
-    metal.prototype.toJSON = function () {
-        var output = {},
-          prop, value;
-
-        for (prop in this._attributes) {
-            value = this._attributes[prop];
-            if (value instanceof metal) {
-                if (value._array === true) {
-                    value = value.toJSON();
-                } else {
-                    value = value._attributes;
-                }
-            }
-            if (this._array) {
-                prop = prop.substr(1, prop.length);
-            }
-            output[prop] = value;
-        }
-
-        return output;
-    }
-
     function toJSON() {
         if (this._array) {
             toJSON.call(this)
@@ -90,7 +98,7 @@
     function property_get(property) {
         var dot = property.indexOf('.'),
             path, remainingPath;
-        if (typeof property === "string" && dot > -1) {
+        if (dot > -1) {
             path = property.substr(0, dot);
             remainingPath = property.substr(dot + 1);
 
@@ -134,7 +142,7 @@
         var dot = property.indexOf('.'),
             path, remainingPath, pathValue;
 
-        if (typeof property === "string" && dot > -1) {
+        if (dot > -1) {
             path = property.substr(0, dot);
             remainingPath = property.substr(dot + 1);
             pathValue = this.get(path);
@@ -163,6 +171,18 @@
             this._attributes[property] = value;
             this._length = this._length + 1;
             this._property_changed(property, oldValue, value);
+        }
+    }
+
+    function parseJSON(json) {
+        var value;
+        for (prop in json) {
+            value = json[prop]
+            if (typeof value === "object") {
+                this._attributes[prop] = new metal(value);
+            } else {
+                this._attributes[prop] = value;
+            }
         }
     }
 
