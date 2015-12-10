@@ -1,9 +1,10 @@
 (function(scope) {
 
-  function metal() {
-    this._length = 0;
+  function metal() {    
     this._attributes = {};
-
+	this._length = 0;	
+	this._array = false;
+	
     this._observers = {};
   }
 
@@ -136,17 +137,11 @@
 
   function property_set(property, value) {
     var dot = property.indexOf('.'),
-      key, remainingKey, localKey, localValue;
+		key, remainingKey, localKey, localValue;
     if (typeof property === "string" && dot > -1) {
       key = property.substr(0, dot);
       remainingKey = property.substr(dot + 1);
       if (this.contains(key) === false) {
-        if (key.charAt(0) === '@') {
-          localKey = key.substr(1, key.length - 1);
-          if (!isNaN(parseInt(localKey))) {
-            this._array = true;
-          }
-        }
         this.set(key, new metal());
       }
       localValue = this.get(key);
@@ -154,14 +149,21 @@
         localValue.set(remainingKey, value);
       }
     } else {
-      if (this._array && property.charAt('@') !== "@") {
-        throw "its a array. you try update value without index.";
-      }
+		
+	  if (property.charAt(0) === '@') {
+		 localKey = property.substr(1, property.length - 1);
+		 if (!isNaN(parseInt(localKey))) {
+			this._array = true;
+		 } else {
+			 throw "its a array. you try update value with " + localKey;
+		 }
+	  }
+
       if (value instanceof metal) {
         value._parent = this;
         value._name = property;
-      }
-
+      }	  
+	  
       this._attributes[property] = value;
       this._length = this._length + 1;
     }
