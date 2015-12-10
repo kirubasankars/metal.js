@@ -8,25 +8,29 @@
         this._observers = {};
     }
 
-    metal.prototype.trigger = function (key) {
+    metal.prototype.trigger = function () {
+        var key = arguments[0],
+            params = Array.prototype.slice.call(arguments, 1);
+
         var observers = this._observers[key];
         if (!observers) return;
+
         for (idx in observers) {
             var callee = observers[idx];
-            callee.cb.call((callee.context || this));
+            callee.cb.apply((callee.context || this), params);
         }
     }
 
-    metal.prototype.on = function (key, cb, context) {
+    metal.prototype.on = function (key, callback, context) {
         var allObservers = this._observers,
-          observers = this._observers[key];
+            observers = this._observers[key];
 
         if (!observers) {
             allObservers[key] = observers = [];
         }
 
         var idx = observers.push({
-            cb: cb,
+            cb: callback,
             context: context
         });
 
@@ -36,6 +40,10 @@
                 delete allObservers[key];
             }
         }
+    }
+
+    metal.prototype._property_changed = function (key, newValue, oldValue) {
+        this.trigger.apply(this, arguments);
     }
 
     metal.prototype.set = function (key, value) {
@@ -125,6 +133,7 @@
     function property_set(property, value) {
         var dot = property.indexOf('.'),
             path, remainingPath, pathValue;
+
         if (typeof property === "string" && dot > -1) {
             path = property.substr(0, dot);
             remainingPath = property.substr(dot + 1);
@@ -150,9 +159,10 @@
             if (value instanceof metal) {
                 value._parent = this;
             }
-
+            var oldValue = this._attributes[property];
             this._attributes[property] = value;
             this._length = this._length + 1;
+            this._property_changed(property, oldValue, value);
         }
     }
 
