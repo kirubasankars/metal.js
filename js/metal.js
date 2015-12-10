@@ -7,14 +7,47 @@
 
         this._observers = {};
 
-        if (arguments) {
-            parseJSON.call(this, arguments[0]);
+        if (arguments && arguments.length > 0) {
+            this.set(arguments[0]);
         }
     }
 
-    metal.prototype.set = function (property, value) {
-        if (typeof property === "string") {
-            property_set.call(this, property, value);
+    metal.prototype.set = function () {
+        var arg1 = arguments[0], arg2 = arguments[1], prop;
+
+        if (typeof arg1 === "object" || Array.isArray(arg1)) {
+            return parseJSON.call(this, arg1)
+        }
+
+        property_set.call(this, arg1, arg2)
+    }
+
+    function parseJSON(value, property) {
+        var a, m = this;
+        if (Array.isArray(value)) {
+            for (prop in value) {
+                a = this.get(property)
+                if (!a) {
+                    if (property) {
+                        m = new metal();
+                        this.set(property, m);                        
+                    }
+                }
+                parseJSON.call(m, value[prop], '@' + prop)
+            }
+        } else if (typeof value === "object") {
+            for (prop in value) {
+                a = this.get(property)
+                if (!a) {
+                    if (property) {
+                        m = new metal();                        
+                        this.set(property, m);
+                    }
+                }
+                parseJSON.call(m, value[prop], prop)
+            }
+        } else {
+            this.set(property, value);
         }
     }
 
@@ -24,17 +57,21 @@
         }
     }
 
-    metal.prototype._property_changed = function () {
-        this.trigger.apply(this, arguments);
+    metal.prototype.has = function (key) {
+        return this._attributes[key] !== undefined;
     }
 
-    metal.prototype.contains = function (key) {
-        return this._attributes[key] !== undefined;
+    metal.prototype.property_changed = function () {
+        this.trigger.apply(this, arguments);
     }
 
     metal.prototype.toJSON = function () {
         var output = {},
-          prop, value;
+            prop, value;
+
+        if (this._array) {
+            output = [];
+        }
 
         for (prop in this._attributes) {
             value = this._attributes[prop];
@@ -46,9 +83,11 @@
                 }
             }
             if (this._array) {
-                prop = prop.substr(1, prop.length);
+                //prop = parseInt(prop.substr(1, prop.length));
+                output.push(value)
+            } else {
+                output[prop] = value;
             }
-            output[prop] = value;
         }
 
         return output;
@@ -63,7 +102,7 @@
 
         for (idx in observers) {
             var callee = observers[idx];
-            callee.cb.apply((callee.context || this), params);
+            callee.callback.apply((callee.context || this), params);
         }
     }
 
@@ -76,7 +115,7 @@
         }
 
         var idx = observers.push({
-            cb: callback,
+            callback: callback,
             context: context
         });
 
@@ -86,6 +125,12 @@
                 delete allObservers[key];
             }
         }
+    }
+
+    if (!Array.isArray) {
+        Array.isArray = function (arg) {
+            return Object.prototype.toString.call(arg) === '[object Array]';
+        };
     }
 
     function toJSON() {
@@ -102,7 +147,7 @@
             path = property.substr(0, dot);
             remainingPath = property.substr(dot + 1);
 
-            if (this.contains(path) === true) {
+            if (this.has(path) === true) {
                 var child = this.get(path);
                 if (child === null) throw path + " is not exists.";
                 return child.get(remainingPath);
@@ -133,7 +178,7 @@
                 return this._length;
             }
 
-            if (this.contains(property) === true) return this._attributes[property];
+            if (this.has(property) === true) return this._attributes[property];
             return null;
         }
     }
@@ -167,22 +212,11 @@
             if (value instanceof metal) {
                 value._parent = this;
             }
+
             var oldValue = this._attributes[property];
             this._attributes[property] = value;
             this._length = this._length + 1;
-            this._property_changed(property, oldValue, value);
-        }
-    }
-
-    function parseJSON(json) {
-        var value;
-        for (prop in json) {
-            value = json[prop]
-            if (typeof value === "object") {
-                this._attributes[prop] = new metal(value);
-            } else {
-                this._attributes[prop] = value;
-            }
+            this.property_changed(property, oldValue, value);
         }
     }
 
