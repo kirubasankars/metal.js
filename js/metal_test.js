@@ -64,8 +64,7 @@ QUnit.test("get $length", function (assert) {
 
 QUnit.test("set/get $parent", function (assert) {
     var m = new metal();
-    m.set("student.name.first", "first")
-    debugger;
+    m.set("student.name.first", "first")    
     m.set("student.name.$parent.age", 32)
     var r = (m.get("student.name.$parent") === m.get("student")) && m.get('student.name.$parent.age') === 32
     assert.ok(r, "$parent works");
@@ -82,12 +81,11 @@ QUnit.test("exception when array overriding", function (assert) {
 QUnit.test("toJSON", function (assert) {
     var m = new metal();
     m.set("student.name.first", "Test")
-    m.set("student.name.last", "Test")
+    m.set("student.name.last", "Test")    
     m.set("student.name.$parent.phone", "99999999")
     m.set("student.marks.@0", 100)
     m.set("student.marks.@2", 95)
     m.set("student.marks.@3.value", 95)
     var v = JSON.stringify(m.toJSON());
-    console.log(v)
     assert.ok(v === '{"student":{"name":{"first":"Test","last":"Test"},"phone":"99999999","marks":{"0":100,"2":95,"3":{"value":95}}}}')
 });
